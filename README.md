@@ -1,4 +1,4 @@
-# Migratory-birds
+# Migratory_birds2023
 Supporting code for manuscript: "A dominant bacteria strain modulates the asymptomatic viral carriage of migratory birds"
 
 1.Analysis of metatranscriptomic data in this study
