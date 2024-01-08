@@ -57,6 +57,7 @@ PE_LOG=${OUTPUT_LOG_DIR}/${sample}_PE.log
 `midas2 run_species --sample_name ${sample} -1 reads/${sample}.decon_1.fastq.gz -2 reads/${sample}.decon_2.fastq.gz --midasdb_name gtdb --midasdb_dir my_midasdb_Catellicoccus --num_cores 12  midas2_output`
 
 ##合并midas结果
+
 `echo -e "sample_name\tmidas_outdir" > list_of_samples.tsv`
 `ls reads | awk -F '.' '{print $1}' | awk -v OFS='\t' '{print $1, "midas2_output"}' >> list_of_samples.tsv`
 
