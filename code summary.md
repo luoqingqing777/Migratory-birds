@@ -1,14 +1,14 @@
-###下载数据样本
+###Download data samples
 
 `prefetch SRRXXX`
 
 `fastq-dump -split-3 ${SRRXXX}.sra -O  ${OUTDIR}` 
 
-###前期数据处理
+###Preliminary data processing
 
 `fastp -I ${sample}_1.fq.gz -I ${sample}_2.fq.gz -o ${sample}_fastp_1.fq.gz -O ${sample}_fastp_2.fq.gz`
 
-###去除16S及宿主信息
+###Remove 16S and host reads
 
 PE1=${sample}_fastp_1.fq.gz;PE2=${sample}_fastp_2.fq.gz
 PE_SAM=${OUTPUT_BAM_DIR}/${sample}_PE.sam
@@ -19,20 +19,20 @@ PE_LOG=${OUTPUT_LOG_DIR}/${sample}_PE.log
 `bowtie2 -p 16 --no-unal --un-conc ${PE_UN} -x ${BOWTIE2_REFERENCE} -1 ${PE1} -2 ${PE2} -S ${PE_SAM} 2> ${PE_LOG}`
 `samtools view -b -S ${PE_SAM} > ${PE_BAM}; rm ${PE_SAM}`
 
-###拼接contig
+###Assemble contig
 
 `megahit -1 ./${sample}.decon_1.fastq -2 ./${sample}.decon_2.fastq -o ./${sample}_megahit_output.fasta -t 6`
 
 `vsearch --sortbylength ./${sample}_megahit_output.fasta --relabel ${sample}.contig –minseqlength 1000 --maxseqlength -1 --output ./${sample}_1k.fa`
 
-###Metaphlan 查看组成
+###Metaphlan 
 
 `metaphlan ./${sample}.decon_1.fastq,./${sample}.decon_2.fastq \
 --bowtie2db /${database}\
 --bowtie2out /${sample}.bowtie2.bz2 \
 --nproc 10 --input_type fastq -s sams/${sample}.sam.bz2 -o /${sample}.mpa.out`
 
-###Humann检测功能
+###Humann
 
 `cat ./${sample}.decon_1.fastq ./${sample}.decon_2.fastq > ${sample}.fastq`
 `humann --input ${sample}.fastq --output ${OUTPUT_DIR} –threads 30`
@@ -47,7 +47,7 @@ PE_LOG=${OUTPUT_LOG_DIR}/${sample}_PE.log
 
 ###Midas2
 
-#将关注的菌对应的号码存入
+#Deposit the number of the bacterium you are interested in 
 
 `midas2 database --init --midasdb_name gtdb --midasdb_dir my_midasdb_gtdb`
 `echo -e "145629" > species_list.txt`
@@ -56,7 +56,7 @@ PE_LOG=${OUTPUT_LOG_DIR}/${sample}_PE.log
 
 `midas2 run_species --sample_name ${sample} -1 reads/${sample}.decon_1.fastq.gz -2 reads/${sample}.decon_2.fastq.gz --midasdb_name gtdb --midasdb_dir my_midasdb_Catellicoccus --num_cores 12  midas2_output`
 
-##合并midas结果
+##Merge Midas results
 
 `echo -e "sample_name\tmidas_outdir" > list_of_samples.tsv`
 `ls reads | awk -F '.' '{print $1}' | awk -v OFS='\t' '{print $1, "midas2_output"}' >> list_of_samples.tsv`
