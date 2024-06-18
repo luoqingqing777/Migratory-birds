@@ -1,5 +1,5 @@
 # Migratory_birds2023
-Supporting code for manuscript: "A dominant bacterium modulates the asymptomatic viral carriage of migratory birds"
+Supporting code for manuscript: "The longitudinal patterns and trans-kingdom modulation of the microbiome and virome in migratory birds of southeast China"
 
 1.Analysis of metatranscriptomic data in this study
 
