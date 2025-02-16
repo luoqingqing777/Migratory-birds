@@ -1,7 +1,6 @@
 ###Download data samples
 
 `prefetch SRRXXX`
-
 `fastq-dump -split-3 ${SRRXXX}.sra -O  ${OUTDIR}` 
 
 ###Preliminary data processing
@@ -19,14 +18,20 @@ PE_LOG=${OUTPUT_LOG_DIR}/${sample}_PE.log
 `bowtie2 -p 16 --no-unal --un-conc ${PE_UN} -x ${BOWTIE2_REFERENCE} -1 ${PE1} -2 ${PE2} -S ${PE_SAM} 2> ${PE_LOG}`
 `samtools view -b -S ${PE_SAM} > ${PE_BAM}; rm ${PE_SAM}`
 
-###Assemble contig
+###Assemble contig(MEGAHIT v1.2.9)
 
 `megahit -1 ./${sample}.decon_1.fastq -2 ./${sample}.decon_2.fastq -o ./${sample}_megahit_output.fasta -t 6`
-
 `vsearch --sortbylength ./${sample}_megahit_output.fasta --relabel ${sample}.contig –minseqlength 1000 --maxseqlength -1 --output ./${sample}_1k.fa`
 
-###Metaphlan 
+###balstn&blastx
+`blastn -query ${sample}_1k.fa  -db ~/NR_NT/nt.gz/nt  -outfmt "6 qseqid sseqid pident nident qlen slen length mismatch positive ppos gapopen gaps qstart qend sstart send evalue bitscore qcovs qcovhsp qcovus qseq sstrand frames " -num_threads 10 -max_target_seqs 1 -out ${sample}.blastn`
 
+`diamond blastx --db ~/NR_NT/fasta/NR/nr --query ${sample}_1k.fa  --more-sensitive --threads 40  --query-cover 10 --max-target-seqs 1 --outfmt 6 qseqid sseqid pident nident qlen slen length mismatch positive ppos gapopen gaps qstart qend sstart send qseq sseq evalue bitscore  qframe  qcovhsp --out ${sample}.blastx`
+#annotation with taxonomizrR 
+#Confirmation of virus host type based on ICTV data
+#TPM analysis for Virus abundance
+
+###Metaphlan 
 `metaphlan ./${sample}.decon_1.fastq,./${sample}.decon_2.fastq \
 --bowtie2db /${database}\
 --bowtie2out /${sample}.bowtie2.bz2 \
@@ -45,25 +50,32 @@ PE_LOG=${OUTPUT_LOG_DIR}/${sample}_PE.log
 
 `ariba prepareref -f out.card.fa -m out.card.tsv card.prepareref.out`
 
-###Midas2
 
-#Deposit the number of the bacterium you are interested in 
+###Long-read Assemble
+`flye --nano-raw /$sample.fastq.gz' --out-dir /$sample --threads 4`
 
-`midas2 database --init --midasdb_name gtdb --midasdb_dir my_midasdb_gtdb`
-`echo -e "145629" > species_list.txt`
+###Instrain
+`prodigal -i ${genome}.fasta -d ${genome}.fna -a ${genome}.faa`
+`bowtie2 -x /${genome}.fasta/${genome} -1 /${sample}.decon_1.fastq.gz -2 /${sample}.decon_2.fastq.gz -S ./${sample}.sam`
+`samtools view  --threads 10 -Sb ./${sample}.sam > ./${sample}.bam`
+`inStrain profile ./${sample}.bam  ${genome}.fasta   -o ./${sample}.IS -p 8 -g ${genome}.fna`
+`inStrain compare -i  ./sample1.IS/ ./sample2.IS/ -p 6 -o ./combine_test.IS.COMPARE`
+`inStrain genome_wide -i ./test.IS.COMPARE/`
+`inStrain plot -i ./test.IS.COMPARE/ -pl a`
 
-`midas2 database --download --midasdb_name gtdb --midasdb_dir my_midasdb_Catellicoccus --species_list species_list.txt`
 
-`midas2 run_species --sample_name ${sample} -1 reads/${sample}.decon_1.fastq.gz -2 reads/${sample}.decon_2.fastq.gz --midasdb_name gtdb --midasdb_dir my_midasdb_Catellicoccus --num_cores 12  midas2_output`
+###The phylogenetic analysis
+`mafft --auto Hepatovirus.fasta > Hepatovirus_mafft.fasta` 
+`trimal -in Hepatovirus_mafft.fasta -out Hepatovirus_filter.fasta -gappyout`
+`iqtree -s Hepatovirus_filter.fasta   -m MF -mtree -nt AUTO`
+`iqtree -s  Hepatovirus_filter.fasta    -bb 10000  -nt AUTO`#boostrap analysis
 
-##Merge Midas results
+##VF-like genes of Catellicoccus
+#use blastp to identify the potential VF-like genes with core.dmnd(from VFDB database)
+ ` bowtie2 --threads 60  -x related_VFD_in_Catellicoccus  -1 ${sample}.decon_1.fastq -2 ${sample}.decon_2.fastq -S ~/1_publish/B_2_function/virulence_factor/bowtie_out/${sample}.sam \ 	
+  samtools view  --threads 60 -Sb ${sample}.sam  >  ${sample}.bam \
+ samtools sort --threads 60 ${sample}.bam -o ${sample}_sort.bam\
+ samtools index  ${sample}_sort.bam\
+ samtools idxstats  ${sample}_sort.bam >  ${sample}.tsv `
 
-`echo -e "sample_name\tmidas_outdir" > list_of_samples.tsv`
-`ls reads | awk -F '.' '{print $1}' | awk -v OFS='\t' '{print $1, "midas2_output"}' >> list_of_samples.tsv`
 
-###Strainphlan
-
-`extract_markers.py -c t__SGB7914 -o db_markers`
-`sample2markers.py  -i metaphlan/sams/${sample}.sam.bz2 -o consensus_markers -n 60`
-
-`strainphlan -s consensus_markers/*.pkl -m db_markers/t__SGB7914.fna  -r reference_genomes/${reference}.fasta.bz2 -o output  -n 40 -c t__SGB7914 --mutation_rates`
