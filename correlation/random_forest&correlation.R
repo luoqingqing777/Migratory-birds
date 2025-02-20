@@ -2,7 +2,7 @@
 rm(list=ls())
 library(randomForest)
 library(tidyr)
-##read random_forest 
+##read random_forest_genus table 
 randomForest_rf<-randomForest(abundance~ .,data=all_correlation,
                               ntree = 200,
                               mtry = round(log(ncol(all_correlation))),
@@ -19,18 +19,6 @@ set.seed(430)
 Groups.rf = randomForest(abundance ~ ., data=test, ntree=500, importance=TRUE, proximity=TRUE)
 data <- round(importance(Groups.rf), 2)
 varImpPlot(Groups.rf)
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -62,8 +50,8 @@ dev.off()
  line<-all_correlation[,c(1,42)]
 plot(line$abundance,line$Picornaviridae)
 line$Picornaviridae<-as.numeric(line$Picornaviridae)
-cor(line$abundance,line$Picornaviridae)
-cor.test(line$abundance,line$Picornaviridae)
+cor(line$abundance,line$Picornaviridae,method = "spearman")
+cor.test(line$abundance,line$Picornaviridaemethod = "spearman")
 
 linear_fit <- lm(Picornaviridae ~abundance, data = line)
 linear_fit
